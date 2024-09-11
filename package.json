@@ -1,0 +1,11 @@
+{
+  "devDependencies": {
+    "@bufbuild/buf": "^1.40.1",
+    "@bufbuild/protoc-gen-connect-es": "^0.13.0",
+    "@bufbuild/protoc-gen-es": "^1.10.0"
+  },
+  "dependencies": {
+    "@bufbuild/connect": "^0.13.0",
+    "@bufbuild/protobuf": "^1.10.0"
+  }
+}
