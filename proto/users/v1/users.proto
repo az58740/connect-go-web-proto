@@ -65,6 +65,7 @@ message UserResponse {
    User user=1;
    Country usercountry=2;
    Province userprovince=3;
+   repeated Action actions=4;
 }
 message LoginRequest{
     string username=1;
