@@ -8,8 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	v1 "github.com/az58740/connect-go-web-proto/users/v1"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	v1 "github.com/az58740/connect-go-web-proto/proto/users/v1"
 	http "net/http"
 	strings "strings"
 )
@@ -36,29 +35,17 @@ const (
 const (
 	// UsersServiceLoginProcedure is the fully-qualified name of the UsersService's Login RPC.
 	UsersServiceLoginProcedure = "/users.v1.UsersService/Login"
-	// UsersServiceGetUserProcedure is the fully-qualified name of the UsersService's GetUser RPC.
-	UsersServiceGetUserProcedure = "/users.v1.UsersService/GetUser"
-	// UsersServiceCreateUserProcedure is the fully-qualified name of the UsersService's CreateUser RPC.
-	UsersServiceCreateUserProcedure = "/users.v1.UsersService/CreateUser"
-	// UsersServiceGetUsersProcedure is the fully-qualified name of the UsersService's GetUsers RPC.
-	UsersServiceGetUsersProcedure = "/users.v1.UsersService/GetUsers"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	usersServiceServiceDescriptor          = v1.File_users_v1_users_proto.Services().ByName("UsersService")
-	usersServiceLoginMethodDescriptor      = usersServiceServiceDescriptor.Methods().ByName("Login")
-	usersServiceGetUserMethodDescriptor    = usersServiceServiceDescriptor.Methods().ByName("GetUser")
-	usersServiceCreateUserMethodDescriptor = usersServiceServiceDescriptor.Methods().ByName("CreateUser")
-	usersServiceGetUsersMethodDescriptor   = usersServiceServiceDescriptor.Methods().ByName("GetUsers")
+	usersServiceServiceDescriptor     = v1.File_users_v1_users_proto.Services().ByName("UsersService")
+	usersServiceLoginMethodDescriptor = usersServiceServiceDescriptor.Methods().ByName("Login")
 )
 
 // UsersServiceClient is a client for the users.v1.UsersService service.
 type UsersServiceClient interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.UserResponse], error)
-	GetUser(context.Context, *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.UserResponse], error)
-	CreateUser(context.Context) *connect.ClientStreamForClient[v1.User, emptypb.Empty]
-	GetUsers(context.Context, *connect.Request[emptypb.Empty]) (*connect.ServerStreamForClient[v1.UserResponse], error)
 }
 
 // NewUsersServiceClient constructs a client for the users.v1.UsersService service. By default, it
@@ -77,33 +64,12 @@ func NewUsersServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(usersServiceLoginMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		getUser: connect.NewClient[v1.GetUserRequest, v1.UserResponse](
-			httpClient,
-			baseURL+UsersServiceGetUserProcedure,
-			connect.WithSchema(usersServiceGetUserMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		createUser: connect.NewClient[v1.User, emptypb.Empty](
-			httpClient,
-			baseURL+UsersServiceCreateUserProcedure,
-			connect.WithSchema(usersServiceCreateUserMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		getUsers: connect.NewClient[emptypb.Empty, v1.UserResponse](
-			httpClient,
-			baseURL+UsersServiceGetUsersProcedure,
-			connect.WithSchema(usersServiceGetUsersMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
 	}
 }
 
 // usersServiceClient implements UsersServiceClient.
 type usersServiceClient struct {
-	login      *connect.Client[v1.LoginRequest, v1.UserResponse]
-	getUser    *connect.Client[v1.GetUserRequest, v1.UserResponse]
-	createUser *connect.Client[v1.User, emptypb.Empty]
-	getUsers   *connect.Client[emptypb.Empty, v1.UserResponse]
+	login *connect.Client[v1.LoginRequest, v1.UserResponse]
 }
 
 // Login calls users.v1.UsersService.Login.
@@ -111,27 +77,9 @@ func (c *usersServiceClient) Login(ctx context.Context, req *connect.Request[v1.
 	return c.login.CallUnary(ctx, req)
 }
 
-// GetUser calls users.v1.UsersService.GetUser.
-func (c *usersServiceClient) GetUser(ctx context.Context, req *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.UserResponse], error) {
-	return c.getUser.CallUnary(ctx, req)
-}
-
-// CreateUser calls users.v1.UsersService.CreateUser.
-func (c *usersServiceClient) CreateUser(ctx context.Context) *connect.ClientStreamForClient[v1.User, emptypb.Empty] {
-	return c.createUser.CallClientStream(ctx)
-}
-
-// GetUsers calls users.v1.UsersService.GetUsers.
-func (c *usersServiceClient) GetUsers(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.ServerStreamForClient[v1.UserResponse], error) {
-	return c.getUsers.CallServerStream(ctx, req)
-}
-
 // UsersServiceHandler is an implementation of the users.v1.UsersService service.
 type UsersServiceHandler interface {
 	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.UserResponse], error)
-	GetUser(context.Context, *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.UserResponse], error)
-	CreateUser(context.Context, *connect.ClientStream[v1.User]) (*connect.Response[emptypb.Empty], error)
-	GetUsers(context.Context, *connect.Request[emptypb.Empty], *connect.ServerStream[v1.UserResponse]) error
 }
 
 // NewUsersServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -146,34 +94,10 @@ func NewUsersServiceHandler(svc UsersServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(usersServiceLoginMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	usersServiceGetUserHandler := connect.NewUnaryHandler(
-		UsersServiceGetUserProcedure,
-		svc.GetUser,
-		connect.WithSchema(usersServiceGetUserMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
-	usersServiceCreateUserHandler := connect.NewClientStreamHandler(
-		UsersServiceCreateUserProcedure,
-		svc.CreateUser,
-		connect.WithSchema(usersServiceCreateUserMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
-	usersServiceGetUsersHandler := connect.NewServerStreamHandler(
-		UsersServiceGetUsersProcedure,
-		svc.GetUsers,
-		connect.WithSchema(usersServiceGetUsersMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
 	return "/users.v1.UsersService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UsersServiceLoginProcedure:
 			usersServiceLoginHandler.ServeHTTP(w, r)
-		case UsersServiceGetUserProcedure:
-			usersServiceGetUserHandler.ServeHTTP(w, r)
-		case UsersServiceCreateUserProcedure:
-			usersServiceCreateUserHandler.ServeHTTP(w, r)
-		case UsersServiceGetUsersProcedure:
-			usersServiceGetUsersHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -185,16 +109,4 @@ type UnimplementedUsersServiceHandler struct{}
 
 func (UnimplementedUsersServiceHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.UserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("users.v1.UsersService.Login is not implemented"))
-}
-
-func (UnimplementedUsersServiceHandler) GetUser(context.Context, *connect.Request[v1.GetUserRequest]) (*connect.Response[v1.UserResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("users.v1.UsersService.GetUser is not implemented"))
-}
-
-func (UnimplementedUsersServiceHandler) CreateUser(context.Context, *connect.ClientStream[v1.User]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("users.v1.UsersService.CreateUser is not implemented"))
-}
-
-func (UnimplementedUsersServiceHandler) GetUsers(context.Context, *connect.Request[emptypb.Empty], *connect.ServerStream[v1.UserResponse]) error {
-	return connect.NewError(connect.CodeUnimplemented, errors.New("users.v1.UsersService.GetUsers is not implemented"))
 }

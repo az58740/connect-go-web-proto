@@ -22,5 +22,5 @@ export const UsersService = {
       kind: MethodKind.Unary,
     },
   }
-} as const;
+};
 
